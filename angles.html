@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>4th Grade Angle Measurement Assessment</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: #f5f7fa;
+        margin: 0;
+        overflow: hidden;
+    }
+    #container {
+        position: relative;
+        width: 100%;
+        height: 100vh;
+    }
+    #protractor-container {
+        position: absolute;
+        top: 50px;
+        left: 50px;
+        width: 300px;
+        user-select: none;
+        cursor: grab;
+        z-index: 99999; /* Always on top */
+    }
+    #protractor {
+        width: 100%;
+        display: block;
+        -webkit-user-drag: none;
+        user-drag: none;
+        pointer-events: auto;
+    }
+    #rotate-handle {
+        position: absolute;
+        bottom: -15px;
+        left: 50%;
+        width: 20px;
+        height: 20px;
+        background: red;
+        border-radius: 50%;
+        cursor: grab;
+        transform: translateX(-50%);
+    }
+    .arrow {
+        position: absolute;
+        top: 10px;
+        font-size: 28px;
+        cursor: pointer;
+        padding: 5px 10px;
+        background: rgba(255,255,255,0.8);
+        border-radius: 5px;
+        user-select: none;
+        z-index: 5000;
+    }
+    #prev { left: 10px; }
+    #next { left: 60px; }
+    #question-area {
+        position: absolute;
+        top: 100px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 80%;
+        z-index: 1000;
+        background: rgba(255,255,255,0.7); /* semi-transparent */
+        backdrop-filter: blur(4px); /* slight blur for readability */
+        border-radius: 10px;
+        padding: 10px;
+    }
+    #angleCanvas {
+        border: 1px solid #ccc;
+        background: white;
+    }
+    #answer {
+        font-size: 18px;
+        padding: 5px;
+        width: 100px;
+        text-align: center;
+        margin-top: 10px;
+    }
+    #submit-btn {
+        font-size: 20px;
+        padding: 10px 20px;
+        background: #4caf50;
+        color: white;
+        border: none;
+        cursor: pointer;
+        margin-top: 20px;
+        border-radius: 5px;
+    }
+    #result {
+        margin-top: 20px;
+        font-size: 20px;
+        font-weight: bold;
+        white-space: pre-wrap;
+        max-height: 300px;       /* limit visible height */
+        overflow-y: auto;        /* enable vertical scroll */
+        padding: 5px;
+        border: 1px solid #ccc;
+        background: #fff;
+        border-radius: 5px;
+    }
+</style>
+</head>
+<body>
+
+<div id="container">
+    <div id="protractor-container">
+        <img id="protractor" src="protractor1.png" alt="Protractor">
+        <div id="rotate-handle"></div>
+    </div>
+
+    <div class="arrow" id="prev">⬅</div>
+    <div class="arrow" id="next">➡</div>
+
+    <div id="question-area">
+        <h2 id="q-num"></h2>
+        <canvas id="angleCanvas" width="400" height="300"></canvas>
+        <div>
+            <input type="number" id="answer" placeholder="Degrees">
+        </div>
+        <div id="submit-container"></div>
+        <div id="result"></div>
+    </div>
+</div>
+
+<script>
+const questions = [35, 60, 90, 120, 150, 45, 75, 135, 25, 180];
+let rotations = questions.map(() => Math.floor(Math.random() * 360));
+let answers = Array(questions.length).fill('');
+let currentQuestion = 0;
+
+const container = document.getElementById('protractor-container');
+const handle = document.getElementById('rotate-handle');
+let dragging = false, rotating = false;
+let offsetX, offsetY;
+let startAngle, startMouseAngle;
+
+// ---- DRAG ----
+function startDrag(e) {
+    e.preventDefault();
+    if (e.target === handle) return;
+    dragging = true;
+    let clientX = e.clientX || e.touches[0].clientX;
+    let clientY = e.clientY || e.touches[0].clientY;
+    offsetX = clientX - container.offsetLeft;
+    offsetY = clientY - container.offsetTop;
+}
+function doDrag(e) {
+    if (!dragging) return;
+    let clientX = e.clientX || e.touches[0].clientX;
+    let clientY = e.clientY || e.touches[0].clientY;
+    container.style.left = (clientX - offsetX) + 'px';
+    container.style.top = (clientY - offsetY) + 'px';
+}
+function endDrag() { dragging = false; }
+
+// ---- ROTATE ----
+function startRotate(e) {
+    e.preventDefault();
+    rotating = true;
+    let clientX = e.clientX || e.touches[0].clientX;
+    let clientY = e.clientY || e.touches[0].clientY;
+    let centerX = container.offsetLeft + container.offsetWidth / 2;
+    let centerY = container.offsetTop + container.offsetHeight / 2;
+    startMouseAngle = Math.atan2(clientY - centerY, clientX - centerX) * 180 / Math.PI;
+    startAngle = getRotation(container);
+}
+function doRotate(e) {
+    if (!rotating) return;
+    let clientX = e.clientX || e.touches[0].clientX;
+    let clientY = e.clientY || e.touches[0].clientY;
+    let centerX = container.offsetLeft + container.offsetWidth / 2;
+    let centerY = container.offsetTop + container.offsetHeight / 2;
+    let angle = Math.atan2(clientY - centerY, clientX - centerX) * 180 / Math.PI;
+    let rotation = angle - startMouseAngle + startAngle;
+    container.style.transform = `rotate(${rotation}deg)`;
+}
+function endRotate() { rotating = false; }
+
+function getRotation(el) {
+    const st = window.getComputedStyle(el, null);
+    const tr = st.getPropertyValue("transform");
+    if (tr === "none") return 0;
+    const values = tr.split('(')[1].split(')')[0].split(',');
+    const a = values[0], b = values[1];
+    const angle = Math.round(Math.atan2(b, a) * (180/Math.PI));
+    return angle;
+}
+
+// Mouse events
+container.addEventListener('mousedown', startDrag);
+document.addEventListener('mousemove', doDrag);
+document.addEventListener('mouseup', endDrag);
+handle.addEventListener('mousedown', startRotate);
+document.addEventListener('mousemove', doRotate);
+document.addEventListener('mouseup', endRotate);
+
+// Touch events
+container.addEventListener('touchstart', startDrag);
+document.addEventListener('touchmove', doDrag);
+document.addEventListener('touchend', endDrag);
+handle.addEventListener('touchstart', startRotate);
+document.addEventListener('touchmove', doRotate);
+document.addEventListener('touchend', endRotate);
+
+// ---- ANGLES ----
+function drawAngleCanvas(angle, rotation) {
+    const canvas = document.getElementById('angleCanvas');
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.strokeStyle = "black";
+    ctx.lineWidth = 3;
+
+    const centerX = canvas.width/2;
+    const centerY = canvas.height/2;
+    const length = 100;
+
+    ctx.beginPath();
+    ctx.moveTo(centerX, centerY);
+    ctx.lineTo(centerX + length * Math.cos(rotation * Math.PI/180), centerY + length * Math.sin(rotation * Math.PI/180));
+    ctx.moveTo(centerX, centerY);
+    ctx.lineTo(centerX + length * Math.cos((rotation + angle) * Math.PI/180), centerY + length * Math.sin((rotation + angle) * Math.PI/180));
+    ctx.stroke();
+}
+
+function showQuestion() {
+    document.getElementById('q-num').textContent = `Question ${currentQuestion+1} of ${questions.length}`;
+    drawAngleCanvas(questions[currentQuestion], rotations[currentQuestion]);
+    document.getElementById('answer').value = answers[currentQuestion] || '';
+    document.getElementById('submit-container').innerHTML = (currentQuestion === questions.length-1)
+        ? '<button id="submit-btn">Submit</button>' : '';
+    if (currentQuestion === questions.length-1) {
+        document.getElementById('submit-btn').onclick = gradeAssessment;
+    }
+}
+
+document.getElementById('prev').onclick = () => {
+    if (currentQuestion > 0) {
+        answers[currentQuestion] = document.getElementById('answer').value;
+        currentQuestion--;
+        showQuestion();
+    }
+};
+document.getElementById('next').onclick = () => {
+    if (currentQuestion < questions.length-1) {
+        answers[currentQuestion] = document.getElementById('answer').value;
+        currentQuestion++;
+        showQuestion();
+    }
+};
+
+function gradeAssessment() {
+    answers[currentQuestion] = document.getElementById('answer').value;
+    let score = 0;
+    let feedback = '';
+    for (let i=0; i<questions.length; i++) {
+        let diff = Math.abs(parseInt(answers[i]) - questions[i]);
+        if (diff <= 2) {
+            score++;
+            feedback += `Q${i+1}: ✅ Correct (${answers[i]}°)\n`;
+        } else {
+            feedback += `Q${i+1}:
